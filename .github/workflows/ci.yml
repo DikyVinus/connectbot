@@ -47,7 +47,7 @@ jobs:
           rm -rf $ANDROID_HOME/cmdline-tools/latest
 
       - name: Setup Android SDK
-        uses: android-actions/setup-android@v3.2.2 # v3.2.2
+        uses: android-actions/setup-android@v3.3.0 # v3.2.2
         with:
           cmdline-tools-version: '13114758'
           packages: 'cmdline-tools;latest tools platform-tools'
