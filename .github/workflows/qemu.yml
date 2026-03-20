@@ -1,4 +1,4 @@
-name: Build QEMU aarch64
+name: Build QEMU aarch64 (Static Musl)
 on: 
   push:
     branches: [ "main", "master" ]
@@ -14,71 +14,36 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure Multiarch for Cross-Compilation
-        run: |
-          sudo sed -i 's/Types: deb/Types: deb\nArchitectures: amd64/g' /etc/apt/sources.list.d/ubuntu.sources
-          cat <<EOF | sudo tee /etc/apt/sources.list.d/ubuntu-ports.sources
-          Types: deb
-          Architectures: arm64
-          URIs: http://ports.ubuntu.com/ubuntu-ports
-          Suites: noble noble-updates noble-security noble-backports
-          Components: main restricted universe multiverse
-          EOF
-          sudo dpkg --add-architecture arm64
-          sudo apt-get update
+      - name: Set up QEMU Emulation
+        uses: docker/setup-qemu-action@v3
 
-      - name: Install Cross-Compile Dependencies
+      - name: Build Statically in Alpine ARM64 Container
         run: |
-          sudo apt-get install -y \
-            crossbuild-essential-arm64 \
-            ninja-build \
-            python3-venv \
-            pkg-config \
-            libglib2.0-dev:arm64 \
-            libpixman-1-dev:arm64 \
-            zlib1g-dev:arm64 \
-            libmount-dev:arm64 \
-            libselinux1-dev:arm64 \
-            libblkid-dev:arm64 \
-            libpcre2-dev:arm64 \
-            libffi-dev:arm64
-
-      - name: Install Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-unknown-linux-gnu
-
-      - name: Download QEMU Source
-        run: |
-          wget -q https://download.qemu.org/qemu-11.0.0-rc0.tar.xz
-          tar -xf qemu-11.0.0-rc0.tar.xz
-
-      - name: Configure and Build
-        run: |
-          cd qemu-11.0.0-rc0
-          mkdir -p build && cd build
-          
-          export PKG_CONFIG="pkg-config"
-          export PKG_CONFIG_PATH="/usr/lib/aarch64-linux-gnu/pkgconfig"
-          export PKG_CONFIG_LIBDIR="/usr/lib/aarch64-linux-gnu/pkgconfig"
-          export PKG_CONFIG_SYSROOT_DIR="/"
-          
-          ../configure \
-            --cross-prefix=aarch64-linux-gnu- \
-            --target-list=aarch64-linux-user,aarch64-softmmu \
-            --static \
-            --disable-werror \
-            --disable-guest-agent \
-            --disable-docs \
-            --disable-tools \
-            --extra-ldflags="-L/usr/lib/aarch64-linux-gnu"
+          docker run --rm -v ${{ github.workspace }}:/work -w /work arm64v8/alpine:latest sh -c "
+            apk update
+            apk add build-base ninja python3 pkgconf glib-static glib-dev pixman-dev pixman-static zlib-dev zlib-static linux-headers bash rust cargo wget tar xz
             
-          make -j$(nproc)
+            wget -q https://download.qemu.org/qemu-11.0.0-rc0.tar.xz
+            tar -xf qemu-11.0.0-rc0.tar.xz
+            cd qemu-11.0.0-rc0
+            
+            mkdir -p build && cd build
+            
+            ../configure \
+              --target-list=aarch64-linux-user,aarch64-softmmu \
+              --static \
+              --disable-werror \
+              --disable-guest-agent \
+              --disable-docs \
+              --disable-tools
+              
+            make -j\$(nproc)
+          "
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: qemu-aarch64-binaries
+          name: qemu-aarch64-static-binaries
           path: |
             qemu-11.0.0-rc0/build/qemu-system-aarch64
             qemu-11.0.0-rc0/build/qemu-aarch64
