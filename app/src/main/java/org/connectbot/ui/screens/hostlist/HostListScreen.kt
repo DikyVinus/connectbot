@@ -483,7 +483,7 @@ private fun HostListItem(
     var showDisconnectDialog by remember { mutableStateOf(false) }
     var showForgetHostKeysDialog by remember { mutableStateOf(false) }
 
-    val hostColor = remember(host.color) { parseColor(host.color) }
+    val hostColor = parseColor(host.color)
     val statusColor = when (connectionState) {
         ConnectionState.CONNECTED -> colorResource(R.color.host_green)
         ConnectionState.DISCONNECTED -> colorResource(R.color.host_red)

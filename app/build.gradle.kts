@@ -92,12 +92,20 @@ android {
     }
 
     signingConfigs {
-        if (project.hasProperty("keystorePassword")) {
+        val hasAndroidInjected = project.hasProperty("android.injected.signing.store.file")
+        if (project.hasProperty("keystorePassword") || hasAndroidInjected) {
             create("release") {
-                storeFile = file(property("keystoreFile") as String)
-                storePassword = property("keystorePassword") as String
-                keyAlias = property("keystoreAlias") as String
-                keyPassword = property("keystorePassword") as String
+                if (hasAndroidInjected) {
+                    storeFile = file(project.property("android.injected.signing.store.file") as String)
+                    storePassword = project.property("android.injected.signing.store.password") as String
+                    keyAlias = project.property("android.injected.signing.key.alias") as String
+                    keyPassword = project.property("android.injected.signing.key.password") as String
+                } else {
+                    storeFile = file(property("keystoreFile") as String)
+                    storePassword = property("keystorePassword") as String
+                    keyAlias = property("keystoreAlias") as String
+                    keyPassword = property("keystorePassword") as String
+                }
             }
         }
     }
@@ -111,7 +119,7 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard.cfg")
             testProguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard.cfg", "proguard-tests.cfg")
 
-            if (project.hasProperty("keystorePassword")) {
+            if (project.hasProperty("keystorePassword") || project.hasProperty("android.injected.signing.store.file")) {
                 signingConfig = signingConfigs.getByName("release")
             }
         }
