@@ -36,7 +36,8 @@ jobs:
             pkg-config \
             libglib2.0-dev:arm64 \
             libpixman-1-dev:arm64 \
-            zlib1g-dev:arm64
+            zlib1g-dev:arm64 \
+            libmount-dev:arm64
 
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
