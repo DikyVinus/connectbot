@@ -50,7 +50,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -68,6 +67,8 @@ import org.connectbot.R
 import org.connectbot.ui.ObservePermissionOnResume
 import org.connectbot.ui.PreviewScreen
 import org.connectbot.ui.common.getLocalizedFontDisplayName
+import org.connectbot.ui.components.ConnectBotBackground
+import org.connectbot.ui.components.ConnectBotTopAppBar
 import org.connectbot.ui.components.FontDownloadProgressDialog
 import org.connectbot.ui.theme.ConnectBotTheme
 import org.connectbot.util.LocalFontProvider
@@ -229,20 +230,21 @@ fun SettingsScreenContent(
     onBellNotificationChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.title_settings)) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+    ConnectBotBackground(modifier = modifier) {
+        Scaffold(
+            containerColor = androidx.compose.ui.graphics.Color.Transparent,
+            topBar = {
+                ConnectBotTopAppBar(
+                    title = stringResource(R.string.title_settings),
+                    navigationIcon = {
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null)
+                        }
                     }
-                }
-            )
-        },
-        modifier = modifier
-    ) { padding ->
-        LazyColumn(modifier = Modifier.padding(padding)) {
+                )
+            }
+        ) { padding ->
+            LazyColumn(modifier = Modifier.padding(padding)) {
             if (uiState.canAuthenticate) {
                 item {
                     PreferenceCategory(title = stringResource(R.string.pref_security_category))

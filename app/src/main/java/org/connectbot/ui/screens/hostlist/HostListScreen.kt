@@ -27,12 +27,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CheckCircle
@@ -50,18 +53,16 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -77,6 +78,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.toColorInt
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -85,6 +87,10 @@ import org.connectbot.R
 import org.connectbot.data.entity.Host
 import org.connectbot.ui.LocalTerminalManager
 import org.connectbot.ui.PreviewScreen
+import org.connectbot.ui.components.ConnectBotBackground
+import org.connectbot.ui.components.ConnectBotCard
+import org.connectbot.ui.components.ConnectBotMetric
+import org.connectbot.ui.components.ConnectBotTopAppBar
 import org.connectbot.ui.components.DisconnectAllDialog
 import org.connectbot.ui.components.ShortcutCustomizationDialog
 import org.connectbot.ui.theme.ConnectBotTheme
@@ -115,7 +121,6 @@ fun HostListScreen(
     val uiState by viewModel.uiState.collectAsState()
     val scope = rememberCoroutineScope()
 
-    // File picker for export
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri ->
@@ -151,7 +156,6 @@ fun HostListScreen(
         }
     }
 
-    // File picker for import
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -175,7 +179,6 @@ fun HostListScreen(
         }
     }
 
-    // Show errors as Toast notifications
     LaunchedEffect(uiState.error) {
         uiState.error?.let { errorMessage ->
             Toast.makeText(context, errorMessage, Toast.LENGTH_LONG).show()
@@ -183,14 +186,12 @@ fun HostListScreen(
         }
     }
 
-    // Handle export result - launch file picker when JSON is ready
     LaunchedEffect(uiState.exportedJson) {
         if (uiState.exportedJson != null) {
             exportLauncher.launch(context.getString(R.string.export_hosts_filename))
         }
     }
 
-    // Handle import result
     LaunchedEffect(uiState.importResult) {
         uiState.importResult?.let { result ->
             Toast.makeText(
@@ -271,7 +272,6 @@ fun HostListScreenContent(
     var showDisconnectAllDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    // Show snackbar when there's an error
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
             snackbarHostState.showSnackbar(
@@ -281,166 +281,171 @@ fun HostListScreenContent(
         }
     }
 
-    Scaffold(
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.app_name)) },
-                actions = {
-                    if (!makingShortcut) {
-                        IconButton(onClick = { showMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.button_more_options))
-                        }
-                        DropdownMenu(
-                            expanded = showMenu,
-                            onDismissRequest = { showMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        stringResource(
-                                            if (uiState.sortedByColor) {
-                                                R.string.list_menu_sortname
-                                            } else {
-                                                R.string.list_menu_sortcolor
-                                            }
+    ConnectBotBackground(modifier = modifier) {
+        Scaffold(
+            containerColor = Color.Transparent,
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            topBar = {
+                ConnectBotTopAppBar(
+                    title = stringResource(R.string.app_name),
+                    subtitle = if (uiState.hosts.isEmpty()) {
+                        stringResource(R.string.empty_hosts_message)
+                    } else {
+                        "${uiState.hosts.size} hosts • ${if (uiState.sortedByColor) stringResource(R.string.list_menu_sortcolor) else stringResource(R.string.list_menu_sortname)}"
+                    },
+                    actions = {
+                        if (!makingShortcut) {
+                            FilledTonalIconButton(onClick = { showMenu = true }) {
+                                Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.button_more_options))
+                            }
+                            DropdownMenu(
+                                expanded = showMenu,
+                                onDismissRequest = { showMenu = false },
+                                shape = RoundedCornerShape(20.dp)
+                            ) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(
+                                                if (uiState.sortedByColor) {
+                                                    R.string.list_menu_sortname
+                                                } else {
+                                                    R.string.list_menu_sortcolor
+                                                }
+                                            )
                                         )
-                                    )
-                                },
-                                onClick = {
-                                    showMenu = false
-                                    onToggleSortOrder()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.list_menu_settings)) },
-                                onClick = {
-                                    showMenu = false
-                                    onNavigateToSettings()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.profile_list_title)) },
-                                onClick = {
-                                    showMenu = false
-                                    onNavigateToProfiles()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.list_menu_pubkeys)) },
-                                onClick = {
-                                    showMenu = false
-                                    onNavigateToPubkeys()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.list_menu_export_hosts)) },
-                                onClick = {
-                                    showMenu = false
-                                    onExportHosts()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.list_menu_import_hosts)) },
-                                onClick = {
-                                    showMenu = false
-                                    onImportHosts()
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.list_menu_disconnect)) },
-                                onClick = {
-                                    showMenu = false
-                                    showDisconnectAllDialog = true
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.title_help)) },
-                                onClick = {
-                                    showMenu = false
-                                    onNavigateToHelp()
-                                }
-                            )
+                                    },
+                                    onClick = {
+                                        showMenu = false
+                                        onToggleSortOrder()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.list_menu_settings)) },
+                                    onClick = {
+                                        showMenu = false
+                                        onNavigateToSettings()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.profile_list_title)) },
+                                    onClick = {
+                                        showMenu = false
+                                        onNavigateToProfiles()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.list_menu_pubkeys)) },
+                                    onClick = {
+                                        showMenu = false
+                                        onNavigateToPubkeys()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.list_menu_export_hosts)) },
+                                    onClick = {
+                                        showMenu = false
+                                        onExportHosts()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.list_menu_import_hosts)) },
+                                    onClick = {
+                                        showMenu = false
+                                        onImportHosts()
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.list_menu_disconnect)) },
+                                    onClick = {
+                                        showMenu = false
+                                        showDisconnectAllDialog = true
+                                    }
+                                )
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.title_help)) },
+                                    onClick = {
+                                        showMenu = false
+                                        onNavigateToHelp()
+                                    }
+                                )
+                            }
                         }
                     }
-                }
-            )
-        },
-        floatingActionButton = {
-            if (!makingShortcut) {
-                FloatingActionButton(
-                    onClick = { onNavigateToEditHost(null) },
-                    // This matches the FloatingActionButtonMenu padding
-                    modifier = Modifier.padding(end = 16.dp, bottom = 16.dp)
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.hostpref_add_host))
+                )
+            },
+            floatingActionButton = {
+                if (!makingShortcut) {
+                    FloatingActionButton(onClick = { onNavigateToEditHost(null) }) {
+                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.hostpref_add_host))
+                    }
                 }
             }
-        },
-        modifier = modifier
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .padding(padding)
-                .fillMaxSize()
-        ) {
-            when {
-                uiState.isLoading -> {
-                    CircularProgressIndicator(
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-
-                uiState.hosts.isEmpty() -> {
-                    Column(
-                        modifier = Modifier.align(Alignment.Center),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(
-                            text = stringResource(R.string.empty_hosts_message),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(bottom = 8.dp)
+        ) { padding ->
+            Box(
+                modifier = Modifier
+                    .padding(padding)
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp)
+            ) {
+                when {
+                    uiState.isLoading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.align(Alignment.Center)
                         )
-                        TextButton(onClick = { onNavigateToEditHost(null) }) {
-                            Text(stringResource(R.string.hostpref_add_host))
+                    }
+
+                    uiState.hosts.isEmpty() -> {
+                        ConnectBotCard(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .fillMaxWidth()
+                        ) {
+                            Text(
+                                text = stringResource(R.string.empty_hosts_message),
+                                style = MaterialTheme.typography.headlineSmall
+                            )
+                            Text(
+                                text = stringResource(R.string.hostpref_add_host),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            TextButton(onClick = { onNavigateToEditHost(null) }) {
+                                Text(stringResource(R.string.hostpref_add_host))
+                            }
                         }
                     }
-                }
 
-                else -> {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = 16.dp,
-                            bottom = 104.dp // Extra padding to avoid FAB menu overlap (88dp + 16dp for menu padding)
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(
-                            items = uiState.hosts,
-                            key = { it.id }
-                        ) { host ->
-                            HostListItem(
-                                host = host,
-                                connectionState = uiState.connectionStates[host.id] ?: ConnectionState.UNKNOWN,
-                                onClick = {
-                                    if (makingShortcut) {
-                                        onSelectShortcut(host)
-                                    } else {
-                                        onNavigateToConsole(host)
-                                    }
-                                },
-                                onEdit = { onNavigateToEditHost(host) },
-                                onPortForwards = { onNavigateToPortForwards(host) },
-                                onDuplicate = { onDuplicateHost(host) },
-                                onForgetHostKeys = { onForgetHostKeys(host) },
-                                onDisconnect = { onDisconnectHost(host) },
-                                onDelete = { onDeleteHost(host) },
-                                makingShortcut = makingShortcut
-                            )
+                    else -> {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(top = 8.dp, bottom = 104.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(
+                                items = uiState.hosts,
+                                key = { it.id },
+                                contentType = { "host" }
+                            ) { host ->
+                                HostListItem(
+                                    host = host,
+                                    connectionState = uiState.connectionStates[host.id] ?: ConnectionState.UNKNOWN,
+                                    onClick = {
+                                        if (makingShortcut) {
+                                            onSelectShortcut(host)
+                                        } else {
+                                            onNavigateToConsole(host)
+                                        }
+                                    },
+                                    onEdit = { onNavigateToEditHost(host) },
+                                    onPortForwards = { onNavigateToPortForwards(host) },
+                                    onDuplicate = { onDuplicateHost(host) },
+                                    onForgetHostKeys = { onForgetHostKeys(host) },
+                                    onDisconnect = { onDisconnectHost(host) },
+                                    onDelete = { onDeleteHost(host) },
+                                    makingShortcut = makingShortcut
+                                )
+                            }
                         }
                     }
                 }
@@ -478,42 +483,39 @@ private fun HostListItem(
     var showDisconnectDialog by remember { mutableStateOf(false) }
     var showForgetHostKeysDialog by remember { mutableStateOf(false) }
 
-    // Determine border color based on connection state
-    val borderColor = when (connectionState) {
+    val hostColor = remember(host.color) { parseColor(host.color) }
+    val statusColor = when (connectionState) {
         ConnectionState.CONNECTED -> colorResource(R.color.host_green)
-
-        // Green
         ConnectionState.DISCONNECTED -> colorResource(R.color.host_red)
-
-        // Red
-        ConnectionState.UNKNOWN -> Color.Transparent
+        ConnectionState.UNKNOWN -> MaterialTheme.colorScheme.outlineVariant
+    }
+    val statusLabel = when (connectionState) {
+        ConnectionState.CONNECTED -> stringResource(R.string.image_description_connected)
+        ConnectionState.DISCONNECTED -> stringResource(R.string.image_description_disconnected)
+        ConnectionState.UNKNOWN -> host.protocol.uppercase()
     }
 
-    ListItem(
-        headlineContent = {
-            Text(
-                text = host.nickname,
-                fontWeight = FontWeight.Bold
-            )
-        },
-        supportingContent = {
-            Text("${host.protocol}://${host.hostname}:${host.port}")
-        },
-        leadingContent = {
+    ConnectBotCard(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(14.dp)
+        ) {
             Box(
-                modifier = Modifier.size(40.dp)
+                modifier = Modifier.size(52.dp),
+                contentAlignment = Alignment.Center
             ) {
-                // Main host icon with colored background and border
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .background(
-                            color = parseColor(host.color),
-                            shape = CircleShape
-                        )
+                        .size(52.dp)
+                        .background(color = hostColor, shape = CircleShape)
                         .border(
-                            width = 3.dp,
-                            color = borderColor,
+                            width = 2.dp,
+                            color = statusColor,
                             shape = CircleShape
                         ),
                     contentAlignment = Alignment.Center
@@ -524,46 +526,75 @@ private fun HostListItem(
                             "telnet" -> Icons.Default.Computer
                             else -> Icons.Default.Link
                         },
-                        contentDescription = when (connectionState) {
-                            ConnectionState.CONNECTED -> stringResource(R.string.image_description_connected)
-                            ConnectionState.DISCONNECTED -> stringResource(R.string.image_description_disconnected)
-                            ConnectionState.UNKNOWN -> null
-                        },
+                        contentDescription = statusLabel,
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
                 }
 
-                // Status badge icon in lower right corner
                 if (connectionState != ConnectionState.UNKNOWN) {
                     Box(
                         modifier = Modifier
                             .align(Alignment.BottomEnd)
-                            .size(16.dp)
+                            .size(18.dp)
                             .background(
                                 color = MaterialTheme.colorScheme.surface,
                                 shape = CircleShape
-                            )
+                            ),
+                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = when (connectionState) {
                                 ConnectionState.CONNECTED -> Icons.Default.CheckCircle
                                 ConnectionState.DISCONNECTED -> Icons.Default.Error
-                                ConnectionState.UNKNOWN -> Icons.Default.Computer // Unreachable
+                                ConnectionState.UNKNOWN -> Icons.Default.Computer
                             },
                             contentDescription = null,
-                            tint = when (connectionState) {
-                                ConnectionState.CONNECTED -> colorResource(R.color.host_green)
-                                ConnectionState.DISCONNECTED -> colorResource(R.color.host_red)
-                                ConnectionState.UNKNOWN -> Color.Gray // Unreachable
-                            },
+                            tint = statusColor,
                             modifier = Modifier.size(16.dp)
                         )
                     }
                 }
             }
-        },
-        trailingContent = {
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = host.nickname,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    StatusPill(label = statusLabel.trimEnd('.'), color = statusColor)
+                }
+                Text(
+                    text = "${host.protocol}://${host.hostname}:${host.port}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+                    ConnectBotMetric(
+                        label = stringResource(R.string.hostpref_port_title),
+                        value = host.port.toString()
+                    )
+                    ConnectBotMetric(
+                        label = stringResource(R.string.hostpref_hostname_title),
+                        value = host.hostname
+                    )
+                }
+            }
+
             if (!makingShortcut) {
                 Box {
                     IconButton(onClick = { showMenu = true }) {
@@ -571,7 +602,8 @@ private fun HostListItem(
                     }
                     DropdownMenu(
                         expanded = showMenu,
-                        onDismissRequest = { showMenu = false }
+                        onDismissRequest = { showMenu = false },
+                        shape = RoundedCornerShape(20.dp)
                     ) {
                         DropdownMenuItem(
                             text = { Text(stringResource(R.string.list_host_edit)) },
@@ -639,10 +671,8 @@ private fun HostListItem(
                     }
                 }
             }
-        },
-        modifier = modifier.clickable(onClick = onClick)
-    )
-    HorizontalDivider()
+        }
+    }
 
     if (showDeleteDialog) {
         HostDeleteDialog(
@@ -674,6 +704,27 @@ private fun HostListItem(
                 showForgetHostKeysDialog = false
                 onForgetHostKeys()
             }
+        )
+    }
+}
+
+@Composable
+private fun StatusPill(
+    label: String,
+    color: Color
+) {
+    Box(
+        modifier = Modifier
+            .background(
+                color = color.copy(alpha = 0.16f),
+                shape = RoundedCornerShape(999.dp)
+            )
+            .padding(horizontal = 10.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            color = color
         )
     }
 }
@@ -803,92 +854,6 @@ private fun HostListScreenLoadingPreview() {
             uiState = HostListUiState(
                 hosts = emptyList(),
                 isLoading = true
-            ),
-            onNavigateToConsole = {},
-            onNavigateToEditHost = {},
-            onNavigateToSettings = {},
-            onNavigateToPubkeys = {},
-            onNavigateToPortForwards = {},
-            onNavigateToProfiles = {},
-            onNavigateToHelp = {},
-            onToggleSortOrder = {},
-            onDeleteHost = {},
-            onDuplicateHost = {},
-            onForgetHostKeys = {},
-            onDisconnectHost = {},
-            onDisconnectAll = {}
-        )
-    }
-}
-
-@PreviewScreen
-@Composable
-private fun HostListScreenErrorPreview() {
-    ConnectBotTheme {
-        HostListScreenContent(
-            uiState = HostListUiState(
-                hosts = emptyList(),
-                isLoading = false,
-                error = "Failed to load hosts from database"
-            ),
-            onNavigateToConsole = {},
-            onNavigateToEditHost = {},
-            onNavigateToSettings = {},
-            onNavigateToPubkeys = {},
-            onNavigateToPortForwards = {},
-            onNavigateToProfiles = {},
-            onNavigateToHelp = {},
-            onToggleSortOrder = {},
-            onDeleteHost = {},
-            onDuplicateHost = {},
-            onForgetHostKeys = {},
-            onDisconnectHost = {},
-            onDisconnectAll = {}
-        )
-    }
-}
-
-@PreviewScreen
-@Composable
-private fun HostListScreenPopulatedPreview() {
-    ConnectBotTheme {
-        HostListScreenContent(
-            uiState = HostListUiState(
-                hosts = listOf(
-                    Host(
-                        id = 1,
-                        nickname = "Production Server",
-                        protocol = "ssh",
-                        username = "root",
-                        hostname = "prod.example.com",
-                        port = 22,
-                        color = "#4CAF50"
-                    ),
-                    Host(
-                        id = 2,
-                        nickname = "Development",
-                        protocol = "ssh",
-                        username = "developer",
-                        hostname = "dev.example.com",
-                        port = 2222,
-                        color = "#2196F3"
-                    ),
-                    Host(
-                        id = 3,
-                        nickname = "Local VM",
-                        protocol = "ssh",
-                        username = "admin",
-                        hostname = "192.168.1.100",
-                        port = 22,
-                        color = "#FF9800"
-                    )
-                ),
-                connectionStates = mapOf(
-                    1L to ConnectionState.CONNECTED,
-                    2L to ConnectionState.DISCONNECTED,
-                    3L to ConnectionState.UNKNOWN
-                ),
-                isLoading = false
             ),
             onNavigateToConsole = {},
             onNavigateToEditHost = {},
