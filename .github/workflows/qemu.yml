@@ -37,7 +37,11 @@ jobs:
             libglib2.0-dev:arm64 \
             libpixman-1-dev:arm64 \
             zlib1g-dev:arm64 \
-            libmount-dev:arm64
+            libmount-dev:arm64 \
+            libselinux1-dev:arm64 \
+            libblkid-dev:arm64 \
+            libpcre2-dev:arm64 \
+            libffi-dev:arm64
 
       - name: Install Rust Toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -60,7 +64,10 @@ jobs:
             --cross-prefix=aarch64-linux-gnu- \
             --target-list=aarch64-linux-user,aarch64-softmmu \
             --static \
-            --disable-werror
+            --disable-werror \
+            --disable-guest-agent \
+            --disable-docs \
+            --disable-tools
             
           make -j$(nproc)
 
