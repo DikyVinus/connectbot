@@ -1,0 +1,119 @@
+name: Hardened CI Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build signed artifacts
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (pinned)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v3
+
+      - name: Set up JDK 17 (pinned)
+        uses: actions/setup-java@v4
+        with:
+          distribution: zulu
+          java-version: 17
+
+      - name: Setup Gradle cache
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Setup Android SDK (pinned + deterministic)
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platform-tools
+            platforms;android-34
+            build-tools;34.0.0
+
+      - name: Decode keystore (scoped)
+        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > keystore.jks
+
+      - name: Build signed release (deterministic flags)
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          ./gradlew assembleRelease bundleRelease \
+            --no-daemon \
+            --stacktrace \
+            --parallel \
+            -Pandroid.injected.signing.store.file=$PWD/keystore.jks \
+            -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
+            -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
+            -Pandroid.injected.signing.key.password=$KEY_PASSWORD
+
+      - name: Prepare artifacts (deterministic tag)
+        run: |
+          TAG="manual-$(git rev-parse --short HEAD)"
+          TITLE="Manual build $TAG"
+
+          echo "$TAG" > tag.txt
+          echo "$TITLE" > release-title.txt
+
+          cp app/build/outputs/apk/oss/release/app-oss-release.apk ConnectBot-${TAG}-oss.apk
+          cp app/build/outputs/apk/google/release/app-google-release.apk ConnectBot-${TAG}-google.apk
+          cp app/build/outputs/bundle/ossRelease/app-oss-release.aab ConnectBot-${TAG}-oss.aab
+          cp app/build/outputs/bundle/googleRelease/app-google-release.aab ConnectBot-${TAG}-google.aab
+
+      - name: Generate checksums
+        run: sha256sum *.apk *.aab > checksums.txt
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release
+          path: |
+            *.apk
+            *.aab
+            checksums.txt
+            tag.txt
+            release-title.txt
+
+      - name: Cleanup keystore
+        if: always()
+        run: rm -f keystore.jks
+
+  release:
+    name: Create GitHub Release
+    needs: build
+    if: success()
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: release
+
+      - name: Read metadata
+        id: meta
+        run: |
+          echo "TAG=$(cat tag.txt)" >> $GITHUB_OUTPUT
+          echo "TITLE=$(cat release-title.txt)" >> $GITHUB_OUTPUT
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.TAG }}
+          name: ${{ steps.meta.outputs.TITLE }}
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+          files: |
+            *.apk
+            *.aab
+            checksums.txt
