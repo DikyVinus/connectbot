@@ -33,7 +33,7 @@ jobs:
             crossbuild-essential-arm64 \
             ninja-build \
             python3-venv \
-            pkg-config-aarch64-linux-gnu \
+            pkg-config \
             libglib2.0-dev:arm64 \
             libpixman-1-dev:arm64 \
             zlib1g-dev:arm64
