@@ -1,0 +1,35 @@
+name: Build QEMU aarch64
+on: [push, workflow_dispatch] # workflow_dispatch lets you run it manually
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Build Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3-ninja libglib2.0-dev \
+                                 libpixman-1-dev pkg-config zlib1g-dev \
+                                 gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+
+      - name: Download QEMU Source
+        run: |
+          wget https://download.qemu.org/qemu-11.0.0-rc0.tar.xz
+          tar -xvf qemu-11.0.0-rc0.tar.xz
+
+      - name: Configure and Build
+        run: |
+          cd qemu-11.0.0-rc0
+          mkdir -p build && cd build
+          # This tells QEMU to build specifically for the ARM64 architecture
+          ../configure --static --target-list=aarch64-linux-user,aarch64-softmmu --cross-prefix=aarch64-linux-gnu-
+          make -j$(nproc)
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemu-aarch64-binaries
+          path: qemu-11.0.0-rc0/build/qemu-system-aarch64
