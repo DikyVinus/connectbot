@@ -633,6 +633,9 @@ fun SettingsScreenContent(
     }
 }
 
+
+}
+
 private fun buildAvailableLanguageList(context: android.content.Context): List<Pair<String, String>> {
     val localeTags = mutableListOf<String>()
     val parser = context.resources.getXml(R.xml._generated_res_locale_config)

@@ -34,7 +34,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
-import androidx.compose.material3.SmallTopAppBar
+import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -77,7 +77,7 @@ fun ConnectBotTopAppBar(
     navigationIcon: @Composable (() -> Unit)? = null,
     actions: @Composable RowScope.() -> Unit = {}
 ) {
-    SmallTopAppBar(
+    TopAppBar(
         title = {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
